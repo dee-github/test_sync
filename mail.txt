@@ -1,0 +1,4 @@
+To: DEEPA.AKELLA@lexisnexisrisk.com
+subject: Mail with SSMTP
+
+Hello, this is a test mail

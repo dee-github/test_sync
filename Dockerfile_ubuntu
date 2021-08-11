@@ -1,0 +1,64 @@
+FROM ubuntu:latest as php-image1
+LABEL maintainer="deepa.akella@lexisnexisrisk.com"
+LABEL org.label-schema.vendor="LexisNexis Risk Solutions"
+
+ARG gurl
+ARG bch
+ARG envt
+ARG CACHEBUST
+
+RUN mkdir -p /application/ && mkdir -p /root/.ssh/
+COPY keys/id_rsa /root/.ssh/
+COPY keys/known_hosts /root/.ssh/
+RUN chmod 400 ~/.ssh/id_rsa
+
+#RUN apt-get update && apt-get -y install tzdata && apt-get -y install software-properties-common && apt-add-repository ppa:ondrej/php \
+    #&& DEBIAN_FRONTEND=noninteractive apt-get -y install php7.3-fpm && php-fpm7.3 -v && apt-get -y install php7.3 curl git zip unzip g++ autoconf libpng-dev npm php7.3-gd php7.3-mysql libapache2-mod-php7.3
+RUN apt-get update && apt-get -y install tzdata && apt-get -y install software-properties-common && apt-add-repository ppa:ondrej/php \
+    && DEBIAN_FRONTEND=noninteractive apt-get -y install php7.3     
+
+#RUN apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 php7.4 php7.4-mysql libapache2-mod-php7.4 php7.4-gd curl links lynx git zip unzip g++ autoconf libpng-dev npm
+
+RUN cd / && rm -rf application && git clone -b $bch $gurl application
+RUN curl -sS https://getcomposer.org/installer |php &&  mv composer.phar /usr/local/bin/composer &&  chmod +x /usr/local/bin/composer && \
+    cd /application && rm -f composer.lock && composer install --ignore-platform-reqs --optimize-autoloader --no-dev
+RUN curl -sL https://rpm.nodesource.com/setup_8.x && apt-get -y install nodejs && cd /application \
+    && npm install && npm run dev && node_modules/.bin/gulp assets
+RUN mkdir -p /application/{storage,bootstrap/cache} && cd /application && chmod 777 -R storage && chmod 777 -R bootstrap/cache
+RUN cp /application/.env-$envt /application/.env && mkdir -p /application/hconf/ 
+COPY apache2_conf /application/hconf/
+COPY ssmtp.conf /application/hconf/
+COPY mail.txt /application/hconf/
+COPY revaliases /application/hconf/
+
+
+FROM ubuntu:latest
+LABEL maintainer="deepa.akella@lexisnexisrisk.com"
+LABEL org.label-schema.vendor="LexisNexis Risk Solutions"
+
+COPY --from=php-image1 /application /application
+
+RUN apt-get update && apt-get -y install tzdata && apt-get -y install software-properties-common && add-apt-repository ppa:ondrej/php && apt-get clean \
+    && DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 php7.3 libapache2-mod-php7.3 php7.3-mysql php7.3-bcmath php7.3-common \
+    php7.3-xml php7.3-mbstring php7.3-json php7.3-gd php7.3-mongodb php7.3-soap php7.3-mysql net-tools openssh-client xvfb libfontconfig wkhtmltopdf ssmtp \
+    && ln -s /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf \
+    && apt-get clean && rm -rf /var/cache/apt \
+    && cd /var/www && rm -rf site && ln -s /application site \
+    && mkdir -p /etc/apache2/ssl && chmod 755 /etc/apache2/ssl \
+    && mv /application/hconf/httpd.conf /etc/apache2/apache2.conf \
+    && mv /application/hconf/httpd-ssl.conf /etc/apache2/conf-available/ \
+    && mv /application/hconf/virtualhost-443.conf /etc/apache2/sites-available/ \
+    && mv /application/hconf/certs/* /etc/apache2/ssl/ \
+    && a2enmod php7.3 && a2enmod rewrite && a2enmod ssl && a2enmod headers && a2enmod socache_shmcb && a2enmod lbmethod_byrequests \
+    && a2ensite virtualhost-443
+    
+RUN rm /usr/sbin/sendmail && ln -s /usr/sbin/ssmtp /usr/sbin/sendmail
+RUN mv /application/hconf/ssmtp.conf /etc/ssmtp/ssmtp.conf && mv /application/hconf/revaliases /etc/ssmtp/revaliases
+RUN whoami && chfn -f "" root && chfn -f "" www-data && cd /application/hconf && ssmtp -t < mail.txt
+#RUN echo "Test email" | ssmtp -v DEEPA.AKELLA@lexisnexisrisk.com
+
+# Expose apache port
+EXPOSE 443
+
+# By default start up apache in the foreground, override with /bin/bash for interative.
+CMD /usr/sbin/apache2ctl -D FOREGROUND

@@ -1,0 +1,35 @@
+image: docker:stable
+
+services:
+  - docker:dind
+
+stages:
+- build
+
+before_script:
+  - gitbranch=`git remote show origin | grep "HEAD branch" | cut -d':' -f 2`
+  - export gitecho=`echo $CI_PROJECT_URL $gitbranch $CI_JOB_URL $CI_JOB_ID $CI_JOB_STAGE`
+  - git clone -b $gitbranch $CI_REPOSITORY_URL
+  - mkdir -p /home/webadmin/dtmp
+  - cp -R * /home/webadmin/dtmp/
+  - echo $CI_COMMIT_REF_NAME
+  - echo $CI_REPOSITORY_URL
+  - giturl="$CI_REPOSITORY_URL"
+  - repo="gitlab.ins.risk.regn.net/tejeor01/sbfe-tmp.git"
+  - repo_url=`echo "http://gitlab-ci-token:${CI_JOB_TOKEN}@$repo"`
+  - echo $repo_url
+  
+build:
+  stage: build
+  script:
+    - echo $CI_COMMIT_REF_NAME
+    - echo $CI_REPOSITORY_URL
+    - cd /home/webadmin/dtmp/
+    - chmod 777 Dockerexit.sh
+    - ./Dockerexit.sh $gitecho
+    - docker image ls | grep -i "ubuntu_email" 
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab.ins.risk.regn.net:4567/akelde01/dtest
+    - docker tag ubuntu_email:latest gitlab.ins.risk.regn.net:4567/akelde01/dtest:ubuntu_email
+    - docker push gitlab.ins.risk.regn.net:4567/akelde01/dtest:ubuntu_email
+    
+ 
