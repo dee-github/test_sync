@@ -20,7 +20,7 @@ jobs:
           fetch-depth: '0'
           
       - name: Composite actions to send team update
-        uses: ~/.github/dee-github/Test_Projects/action5@test_accurint
+        uses: test/Test_Projects/action5@test_accurint
         with:
           repository_name: 'multi_factor_auth'
          
