@@ -16,7 +16,7 @@ jobs:
           repository: dee-github/Test_Projects
           path: ./.github/test
           ref: test_accurint
-          token: ${{inputs.GH_PAT}}
+          token: ${{secrets.GH_PAT}}
           fetch-depth: '0'
           
       - name: Composite actions to send team update
