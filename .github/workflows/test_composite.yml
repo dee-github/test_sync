@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Composite actions to send team update
-        uses: dee-github/Test_Projects/action5@test_accurint
+        uses: ./.github/dee-github/Test_Projects/action5@test_accurint
         with:
           repository_name: 'multi_factor_auth'
          
