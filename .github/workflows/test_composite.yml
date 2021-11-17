@@ -10,8 +10,17 @@ jobs:
   send_team_update:         
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          repository: dee-github/Test_Projects
+          path: test
+          ref: test_accurint
+          token: ${{inputs.GH_PAT}}
+          fetch-depth: '0'
+          
       - name: Composite actions to send team update
-        uses: ./.github/dee-github/Test_Projects/action5@test_accurint
+        uses: ~/.github/dee-github/Test_Projects/action5@test_accurint
         with:
           repository_name: 'multi_factor_auth'
          
