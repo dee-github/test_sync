@@ -14,13 +14,13 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: dee-github/Test_Projects
-          path: test
+          path: ./.github/test
           ref: test_accurint
           token: ${{inputs.GH_PAT}}
           fetch-depth: '0'
           
       - name: Composite actions to send team update
-        uses: test/Test_Projects/action5@test_accurint
+        uses: ./.github/test/action5
         with:
           repository_name: 'multi_factor_auth'
          
